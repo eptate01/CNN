@@ -11,36 +11,32 @@ from tensorflow.keras.metrics import Precision, Recall, BinaryAccuracy
 data = tf.keras.utils.image_dataset_from_directory('training_data')
 data = data.map(lambda x,y: (x/255, y))
 test_data = tf.keras.utils.image_dataset_from_directory('testing_data')
-test_data = data.map(lambda x,y: (x/255, y))
-#convert data into a numpy iterator so we can use it
+test_data = test_data.map(lambda x,y: (x/255, y))
+'''Plot some of the data and pictures to ensure it's transferring data well
 data_iterator = data.as_numpy_iterator()
 test_data_iterator = test_data.as_numpy_iterator()
 #using the data pipeline
 batch = data_iterator.next()
-test_batch = test_data_iterator.next()
-
+ 
 fig, ax = plt.subplots(ncols=4, figsize=(20,20))
 for idx, img in enumerate(batch[0][:4]):
     ax[idx].imshow(img)
     ax[idx].title.set_text(batch[1][idx])
 #plt.show()
-
+'''
 #create a validation data set
 train_size = int(len(data)*.8)
 val_size = int(len(data)*.2)
-print(len(data), train_size, val_size)
-
 train = data.take(train_size)
 val = data.skip(train_size).take(val_size)
 
-
-
+#create the CNN model
 model = Sequential()
 #16 filters, size 3x3, stride 1, input is 256 by 256 3 pixels deep
 model.add(Conv2D(16, (3,3), 1, activation='relu', input_shape=(256,256,3)))
 #grab the max value
 model.add(MaxPooling2D())
-model.add(Conv2D(32, (3,3), 1, activation='relu'))
+model.add(Conv2D(16, (3,3), 1, activation='relu'))
 model.add(MaxPooling2D())
 model.add(Conv2D(16, (3,3), 1, activation='relu'))
 model.add(MaxPooling2D())
@@ -48,24 +44,24 @@ model.add(MaxPooling2D())
 model.add(Flatten())
 #send to 256 neurons
 model.add(Dense(256, activation='relu'))
+model.add(Dense(128, activation='relu'))
 #1 layer
 model.add(Dense(1, activation='sigmoid'))
 
 model.compile('adam', loss=tf.losses.BinaryCrossentropy(), metrics=['accuracy'])
 
-logdir='logs'
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
-hist = model.fit(train, epochs=20, validation_data=val, callbacks=[tensorboard_callback])
+
+hist = model.fit(train, epochs=20, validation_data=val)
 
 precision = Precision()
 recall = Recall()
 accuracy = BinaryAccuracy()
-
-for batch in test_data.as_numpy_iterator(): 
-    X, y = batch
+for newBatch in test_data.as_numpy_iterator(): 
+    X, y = newBatch
     yhat = model.predict(X)
+    print(yhat, y)
     precision.update_state(y, yhat)
     recall.update_state(y, yhat)
     accuracy.update_state(y, yhat)
 
-print(f'precision:{precision.result().numpy()} recall:{recall.result().numpy} accuracy{accuracy.result().numpy}')
+print(f'precision:{precision.result().numpy()} recall:{recall.result().numpy()} accuracy{accuracy.result().numpy()}')
